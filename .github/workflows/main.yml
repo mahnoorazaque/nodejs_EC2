@@ -40,5 +40,5 @@ jobs:
 
           # Restart the application with PM2 using app.js
             pm2 restart app || pm2 start app.js --name app
-            EOF
+          EOF
 
