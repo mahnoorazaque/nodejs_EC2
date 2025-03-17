@@ -3,56 +3,24 @@ name: Deploy to AWS EC2
 on:
   push:
     branches:
-      - main  # Change this if you want to deploy from a different branch
-  workflow_dispatch:
+      - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🔑 Set up SSH
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > ec2-key.pem
-          chmod 600 ec2-key.pem
-
-      - name: 🚀 Deploy to EC2
-        run: |
-          ssh -i ec2-key.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e  # Exit on error
-            
-            echo "🔍 Checking project directory..."
-            cd /home/ubuntu
-
-            # If directory exists but is missing important files, delete it
-            if [ -d "simple-node-app" ]; then
-              cd simple-node-app
-              if [ ! -f "package.json" ] || [ ! -f "app.js" ]; then
-                echo "⚠️ Missing files detected! Removing directory..."
-                cd ..
-                rm -rf simple-node-app
-              fi
-            fi
-
-            # Clone repo if missing
-            if [ ! -d "simple-node-app" ]; then
-              echo "📥 Cloning repository..."
-              git clone git@github.com:your-username/simple-node-app.git simple-node-app
-            fi
-
-            cd simple-node-app
-
-            echo "🔄 Pulling latest code..."
-            git reset --hard HEAD
+      - name: SSH into EC2 & Deploy App
+        uses: appleboy/ssh-action@v0.1.4
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/my-node-app
             git pull origin main
-
-            echo "📦 Installing dependencies..."
-            npm install --production
-
-            echo "🚀 Restarting app..."
+            npm install
             pm2 restart app || pm2 start app.js --name app
-
-            echo "✅ Deployment successful!"
-          EOF
