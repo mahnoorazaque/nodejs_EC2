@@ -24,8 +24,21 @@ jobs:
       - name: Deploy via SSH 🚀
         run: |
           ssh -i ec2-key.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            cd /home/ubuntu/my-node-app
-            git pull origin main
+            # Ensure the project directory exists
+            mkdir -p /home/ubuntu/simple-node-app
+            cd /home/ubuntu/simple-node-app
+
+          # Clone the repository if not already present
+            if [ ! -d ".git" ]; then
+              git clone git@github.com:your-repo/simple-node-app.git .  # Replace with your repo
+            else
+              git pull origin main
+            fi
+
+          # Install dependencies
             npm install
-            pm2 restart app || pm2 start index.js --name app
-          EOF
+
+          # Restart the application with PM2 using app.js
+            pm2 restart app || pm2 start app.js --name app
+            EOF
+
