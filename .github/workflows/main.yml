@@ -1,26 +1,52 @@
-name: Deploy to AWS EC2
+name:  Deply Nodejs App on EC2 
 
 on:
   push:
     branches:
-      - main
+        - main
   workflow_dispatch:
 jobs:
-  deploy:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use node js
+        uses: actions/setup-node@v1
+        with:
+         node-version: ${{ matrix.node-version }}
+      - name: npm install and build
+        run: |
+          npm install
+          npm run build
+
+        env: 
+          CI: true   
+
+
+  depoly:
+    needs: [build]
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: SSH into EC2 & Deploy App
-        uses: appleboy/ssh-action@v1
-        with:
+     - name: SSH deploy
+       uses: appleboy/ssh-action@main
+       with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          username:  ${{ secrets.EC2_USER }}
+          key:  ${{ secrets.EC2_SSH_KEY }}
+          port:  ${{ secrets.PORT }}
           script: |
-            cd /home/ubuntu/my-node-app
-            git pull origin main
-            npm install
-            pm2 restart app || pm2 start app.js --name app
+              curl -o-   https://raw.githubusercontent.com/creationix/nvm/v0.33.8/install.sh    | bash
+              . ~/.nvm/nvm.sh
+
+               nvm instalL 22
+               npm install -g pm2
+               cd ~/CICD
+               git pull origin main
+               npm install
+               npm run build
+               pm2 restart api
