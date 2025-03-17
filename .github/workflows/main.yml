@@ -1,52 +1,30 @@
-name:  Deply Nodejs App on EC2 
+name: Deploy to EC2
 
 on:
   push:
     branches:
-        - main
+      - main
   workflow_dispatch:
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22.x]
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Use node js
-        uses: actions/setup-node@v1
-        with:
-         node-version: ${{ matrix.node-version }}
-      - name: npm install and build
-        run: |
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Setup SSH Key
+      run: |
+        echo "${{ secrets.EC2_SSH_KEY }}" | base64 --decode > githubkey.pem
+        chmod 400 githubkey.pem
+
+    - name: Deploy to EC2
+      run: |
+        ssh -o StrictHostKeyChecking=no -i githubkey.pem ec2-user@18.208.167.95 << 'EOF'
+          cd ~/app || mkdir ~/app && cd ~/app
+          git clone https://github.com/mahnoorazaque/nodejs_project.git || (cd nodejs_project && git pull origin main)
+          cd nodejs_project
           npm install
-          npm run build
-
-        env: 
-          CI: true   
-
-
-  depoly:
-    needs: [build]
-    runs-on: ubuntu-latest
-
-    steps:
-     - name: SSH deploy
-       uses: appleboy/ssh-action@main
-       with:
-          host: ${{ secrets.EC2_HOST }}
-          username:  ${{ secrets.EC2_USER }}
-          key:  ${{ secrets.EC2_SSH_KEY }}
-          port:  ${{ secrets.PORT }}
-          script: |
-              curl -o-   https://raw.githubusercontent.com/creationix/nvm/v0.33.8/install.sh    | bash
-              . ~/.nvm/nvm.sh
-
-               nvm instalL 22
-               npm install -g pm2
-               cd ~/CICD
-               git pull origin main
-               npm install
-               npm run build
-               pm2 restart api
+          pm2 stop all || true
+          pm2 start app.js --name "node-app"
+        EOF
