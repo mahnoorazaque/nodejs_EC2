@@ -1,44 +1,58 @@
-name: Deploy Node.js App to AWS EC2
+name: Deploy to AWS EC2
 
 on:
   push:
     branches:
-      - main  
+      - main  # Change this if you want to deploy from a different branch
   workflow_dispatch:
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set up SSH Key 🔑
+      - name: 🔑 Set up SSH
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > ec2-key.pem
           chmod 600 ec2-key.pem
 
-      - name: Test SSH Connection 🛠️
-        run: ssh -i ec2-key.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "echo Connected successfully!"
-
-      - name: Deploy via SSH 🚀
+      - name: 🚀 Deploy to EC2
         run: |
           ssh -i ec2-key.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-            # Ensure the project directory exists
-            mkdir -p /home/ubuntu/simple-node-app
-            cd /home/ubuntu/simple-node-app
+            set -e  # Exit on error
+            
+            echo "🔍 Checking project directory..."
+            cd /home/ubuntu
 
-          # Clone the repository if not already present
-            if [ ! -d ".git" ]; then
-              git clone git@github.com:your-repo/simple-node-app.git .  # Replace with your repo
-            else
-              git pull origin main
+            # If directory exists but is missing important files, delete it
+            if [ -d "simple-node-app" ]; then
+              cd simple-node-app
+              if [ ! -f "package.json" ] || [ ! -f "app.js" ]; then
+                echo "⚠️ Missing files detected! Removing directory..."
+                cd ..
+                rm -rf simple-node-app
+              fi
             fi
 
-          # Install dependencies
-            npm install
+            # Clone repo if missing
+            if [ ! -d "simple-node-app" ]; then
+              echo "📥 Cloning repository..."
+              git clone git@github.com:your-username/simple-node-app.git simple-node-app
+            fi
 
-          # Restart the application with PM2 using app.js
+            cd simple-node-app
+
+            echo "🔄 Pulling latest code..."
+            git reset --hard HEAD
+            git pull origin main
+
+            echo "📦 Installing dependencies..."
+            npm install --production
+
+            echo "🚀 Restarting app..."
             pm2 restart app || pm2 start app.js --name app
-          EOF
 
+            echo "✅ Deployment successful!"
+          EOF
