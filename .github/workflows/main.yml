@@ -21,7 +21,7 @@ jobs:
     - name: Deploy to EC2
       run: |
         ssh -o StrictHostKeyChecking=no -i githubkey.pem ec2-user@18.208.167.95 << 'EOF'
-          cd ~/app || mkdir ~/app && cd ~/app
+          mkdir -p /home/ec2-user/app && /home/ec2-user/app
           git clone https://github.com/mahnoorazaque/nodejs_EC2.git || (cd nodejs_project && git pull origin main)
           cd nodejs_project
           npm install
