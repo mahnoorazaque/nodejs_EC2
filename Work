@@ -4,13 +4,13 @@ on:
   push:
     branches:
         - main
-
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [14.x]
+        node-version: [22.x]
 
     steps:
       - uses: actions/checkout@v2
@@ -33,17 +33,17 @@ jobs:
 
     steps:
      - name: SSH deploy
-       uses: appleboy/ssh-action@master
+       uses: appleboy/ssh-action@main
        with:
-          host: ${{ secrets.HOST }}
-          username:  ${{ secrets.USER }}
-          key:  ${{ secrets.KEY }}
+          host: ${{ secrets.EC2_HOST }}
+          username:  ${{ secrets.EC2_USER }}
+          key:  ${{ secrets.EC2_SSH_KEY }}
           port:  ${{ secrets.PORT }}
           script: |
               curl -o-   https://raw.githubusercontent.com/creationix/nvm/v0.33.8/install.sh    | bash
               . ~/.nvm/nvm.sh
 
-               nvm instal 14
+               nvm instalL 22
                npm install -g pm2
                cd ~/CICD
                git pull origin main
